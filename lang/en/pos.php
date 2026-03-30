@@ -7,4 +7,6 @@ return [
     'pos_rate_api_error_with_reason' => 'Failed to fetch POS rates from the external API. Reason: :reason',
     'sync_success' => 'POS rates synced successfully.',
     'sync_dispatched' => 'POS rate sync job has been dispatched.',
+    'invalid_card_type' => 'The provided card type is not valid.',
+    'invalid_currency' => 'The provided currency is not valid.',
 ];

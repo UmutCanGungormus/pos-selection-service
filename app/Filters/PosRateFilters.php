@@ -14,7 +14,13 @@ class PosRateFilters extends QueryFilters
 
     public function cardType(string $value): void
     {
-        $this->builder->where('card_type', CardType::from($value));
+        $enum = CardType::tryFrom($value);
+
+        if ($enum === null) {
+            abort(422, __('pos.invalid_card_type'));
+        }
+
+        $this->builder->where('card_type', $enum);
     }
 
     public function cardBrand(string $value): void
@@ -29,6 +35,12 @@ class PosRateFilters extends QueryFilters
 
     public function currency(string $value): void
     {
-        $this->builder->where('currency', Currency::from($value));
+        $enum = Currency::tryFrom($value);
+
+        if ($enum === null) {
+            abort(422, __('pos.invalid_currency'));
+        }
+
+        $this->builder->where('currency', $enum);
     }
 }
