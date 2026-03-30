@@ -1,0 +1,183 @@
+x-app: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment: &app-env
+    APP_ENV: ${APP_ENV:-local}
+    APP_DEBUG: ${APP_DEBUG:-true}
+    APP_KEY: ${APP_KEY:-}
+    DB_CONNECTION: mysql
+    DB_HOST: mysql
+    DB_PORT: 3306
+    DB_DATABASE: ${DB_DATABASE:-pos_selection}
+    DB_USERNAME: ${DB_USERNAME:-pos_user}
+    DB_PASSWORD: ${DB_PASSWORD:-secret}
+    CACHE_STORE: redis
+    QUEUE_CONNECTION: redis
+    SESSION_DRIVER: redis
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    LOG_CHANNEL: stack
+    LOG_STACK: stderr,graylog
+    GRAYLOG_HOST: graylog
+    GRAYLOG_PORT: 12201
+    HORIZON_PREFIX: ${HORIZON_PREFIX:-pos-horizon:}
+  networks:
+    - pos-network
+
+services:
+  app:
+    <<: *app-base
+    container_name: pos-app
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: pos-nginx
+    restart: unless-stopped
+    ports:
+      - "${FORWARD_NGINX_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - pos-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: pos-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-pos_selection}
+      MYSQL_USER: ${DB_USERNAME:-pos_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-secret}
+    ports:
+      - "${FORWARD_MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pos-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: pos-redis
+    restart: unless-stopped
+    command: >
+      sh -c "if [ -n \"$REDIS_PASSWORD\" ]; then
+        redis-server --appendonly yes --requirepass \"$REDIS_PASSWORD\";
+      else
+        redis-server --appendonly yes;
+      fi"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    ports:
+      - "${FORWARD_REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pos-network
+
+  migrate:
+    <<: *app-base
+    container_name: pos-migrate
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["php", "artisan", "migrate", "--force"]
+
+  horizon:
+    <<: *app-base
+    container_name: pos-horizon
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    stop_grace_period: 30s
+    command: ["php", "artisan", "horizon"]
+
+  scheduler:
+    <<: *app-base
+    container_name: pos-scheduler
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command: ["php", "artisan", "schedule:work"]
+
+  mongodb:
+    image: mongo:6.0
+    container_name: pos-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - pos-network
+
+  opensearch:
+    image: opensearchproject/opensearch:2
+    container_name: pos-opensearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-Op3nS3arch!2026}
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - pos-network
+
+  graylog:
+    image: graylog/graylog:6.1
+    container_name: pos-graylog
+    restart: unless-stopped
+    environment:
+      GRAYLOG_PASSWORD_SECRET: ${GRAYLOG_PASSWORD_SECRET:-somepasswordpepper1234567890abcdef}
+      GRAYLOG_ROOT_PASSWORD_SHA2: ${GRAYLOG_ROOT_PASSWORD_SHA2:-8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918}
+      GRAYLOG_HTTP_EXTERNAL_URI: http://localhost:${FORWARD_GRAYLOG_PORT:-9000}/
+      GRAYLOG_MONGODB_URI: mongodb://mongodb:27017/graylog
+      GRAYLOG_ELASTICSEARCH_HOSTS: http://opensearch:9200
+    ports:
+      - "${FORWARD_GRAYLOG_PORT:-9000}:9000"
+      - "${FORWARD_GRAYLOG_GELF_PORT:-12201}:12201/udp"
+    depends_on:
+      - mongodb
+      - opensearch
+    networks:
+      - pos-network
+
+volumes:
+  mysql-data:
+  redis-data:
+  mongodb-data:
+  opensearch-data:
+
+networks:
+  pos-network:
+    driver: bridge
