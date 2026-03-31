@@ -161,6 +161,9 @@ That is all. The service will:
 # Check all services are running
 docker compose ps
 
+# Install dev dependencies (required once, since the container ships with --no-dev)
+docker exec pos-app composer install --dev
+
 # Run the test suite
 docker exec pos-app php artisan test
 
