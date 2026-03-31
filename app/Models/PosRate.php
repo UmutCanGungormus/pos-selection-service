@@ -5,12 +5,13 @@ namespace App\Models;
 use App\Enums\CardType;
 use App\Enums\Currency;
 use App\Traits\Query\Filterable;
+use App\Traits\Query\Paginatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class PosRate extends Model
 {
-    use Filterable;
+    use Filterable, Paginatable;
 
     protected $fillable = [
         'pos_name',

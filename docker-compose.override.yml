@@ -4,20 +4,28 @@ services:
   app:
     volumes:
       - .:/var/www
+      - vendor:/var/www/vendor
 
   nginx:
     volumes:
       - .:/var/www
+      - vendor:/var/www/vendor
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
   horizon:
     volumes:
       - .:/var/www
+      - vendor:/var/www/vendor
 
   scheduler:
     volumes:
       - .:/var/www
+      - vendor:/var/www/vendor
 
   migrate:
     volumes:
       - .:/var/www
+      - vendor:/var/www/vendor
+
+volumes:
+  vendor:

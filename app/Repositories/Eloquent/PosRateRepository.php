@@ -6,10 +6,11 @@ use App\Enums\CardType;
 use App\Enums\Currency;
 use App\Filters\PosRateFilters;
 use App\Models\PosRate;
+use App\Query\Paginate\QueryPaginate;
 use App\Repositories\AbstractEloquentRepository;
 use App\Repositories\Contracts\PosRateRepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * @extends AbstractEloquentRepository<PosRate>
@@ -35,13 +36,13 @@ class PosRateRepository extends AbstractEloquentRepository implements PosRateRep
             ->get();
     }
 
-    public function paginateWithFilters(PosRateFilters $filters, int $perPage = 15): LengthAwarePaginator
+    public function paginateWithFilters(PosRateFilters $filters, QueryPaginate $paginate): LengthAwarePaginator
     {
         return $this->model->newQuery()
             ->filter($filters)
             ->orderBy('pos_name')
             ->orderBy('installment')
-            ->paginate($perPage);
+            ->customPaginate($paginate);
     }
 
     public function upsertRate(array $attributes, array $values): PosRate

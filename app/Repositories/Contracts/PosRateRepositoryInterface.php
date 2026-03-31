@@ -6,8 +6,9 @@ use App\Enums\CardType;
 use App\Enums\Currency;
 use App\Filters\PosRateFilters;
 use App\Models\PosRate;
+use App\Query\Paginate\QueryPaginate;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * @extends EloquentRepositoryInterface<PosRate>
@@ -33,7 +34,7 @@ interface PosRateRepositoryInterface extends EloquentRepositoryInterface
     /**
      * @return LengthAwarePaginator<PosRate>
      */
-    public function paginateWithFilters(PosRateFilters $filters, int $perPage = 15): LengthAwarePaginator;
+    public function paginateWithFilters(PosRateFilters $filters, QueryPaginate $paginate): LengthAwarePaginator;
 
     public function findLowestCostRate(
         CardType $cardType,
