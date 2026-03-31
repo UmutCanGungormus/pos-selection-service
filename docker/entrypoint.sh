@@ -30,6 +30,12 @@ mkdir -p /var/www/bootstrap/cache
 chmod -R 775 /var/www/bootstrap/cache
 chown -R www-data:www-data /var/www/bootstrap/cache
 
+# Clear stale bootstrap cache (dev host may have cached dev-only providers)
+rm -f /var/www/bootstrap/cache/packages.php
+rm -f /var/www/bootstrap/cache/services.php
+rm -f /var/www/bootstrap/cache/config.php
+
+php artisan package:discover --ansi
 php artisan config:cache
 php artisan route:cache
 php artisan event:cache
