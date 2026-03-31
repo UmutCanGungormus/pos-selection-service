@@ -198,6 +198,10 @@ This project uses [Laravel Pint](https://laravel.com/docs/pint) for code style e
 ## Testing
 
 ```bash
+# Install dev dependencies first (the Docker image ships production-only)
+docker exec pos-app composer install --dev
+
+# Run tests
 docker exec pos-app php artisan test
 ```
 
