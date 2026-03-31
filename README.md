@@ -83,8 +83,7 @@ app/
 |---|---|---|
 | POST | `/api/pos/select` | Select lowest-cost POS for a transaction |
 | GET | `/api/pos/rates` | List POS rates (paginated, filterable) |
-| POST | `/api/pos/sync` | Sync rates from external API (synchronous) |
-| POST | `/api/pos/sync/dispatch` | Dispatch async sync job via Horizon |
+| POST | `/api/pos/sync` | Dispatch async rate sync job via Horizon |
 
 ### POS Selection Example
 
@@ -118,7 +117,9 @@ app/
       "installment": 6,
       "currency": "TRY",
       "commission_rate": 0.0270
-    }
+    },
+    "price": 27.00,
+    "payable_total": 1027.00
   }
 }
 ```
@@ -129,7 +130,7 @@ app/
 POS Cost = max(Amount x Commission Rate, Minimum Fee)
 ```
 
-When multiple POS providers have equal costs, the one with the higher `priority` value is selected.
+The `price` field represents the commission cost, and `payable_total` is the sum of `amount` and `price`. When multiple POS providers have equal costs, the one with the higher `priority` value is selected.
 
 ## Getting Started
 
@@ -163,7 +164,7 @@ docker compose ps
 # Run the test suite
 docker exec pos-app php artisan test
 
-# Sync POS rates from the mock API
+# Dispatch POS rate sync job
 curl -X POST http://localhost:8080/api/pos/sync
 
 # Select the best POS for a transaction
@@ -256,7 +257,7 @@ POS rates are fetched from the mock API provided by PayTR:
 GET https://6899a45bfed141b96ba02e4f.mockapi.io/paytr/ratios
 ```
 
-The sync job runs hourly via the scheduler and can be triggered manually via `POST /api/pos/sync`.
+The sync job runs hourly via the scheduler and can be triggered manually via `POST /api/pos/sync`. The endpoint dispatches the job to the queue asynchronously, benefiting from Horizon's retry logic, rate limiting, and uniqueness guarantees.
 
 ## License
 

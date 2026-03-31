@@ -9,14 +9,14 @@ final readonly class PosSelectionOutcome
     public function __construct(
         public array $filters,
         public PosRate $bestRate,
-        public float $cost,
+        public float $price,
+        public float $payableTotal,
     ) {}
 
     public function toArray(): array
     {
         return [
             'filters' => $this->filters,
-            'cost' => round($this->cost, 2),
             'overall_min' => [
                 'pos_name' => $this->bestRate->pos_name,
                 'card_type' => $this->bestRate->card_type->value,
@@ -25,6 +25,8 @@ final readonly class PosSelectionOutcome
                 'currency' => $this->bestRate->currency->value,
                 'commission_rate' => (float) $this->bestRate->commission_rate,
             ],
+            'price' => round($this->price, 2),
+            'payable_total' => round($this->payableTotal, 2),
         ];
     }
 }

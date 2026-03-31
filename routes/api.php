@@ -10,6 +10,5 @@ Route::prefix('pos')->name('pos.')->middleware('throttle:60,1')->group(function 
 
     Route::get('/rates', [PosRateController::class, 'index'])->name('rates');
 
-    Route::post('/sync', [PosRateSyncController::class, 'sync'])->name('sync');
-    Route::post('/sync/dispatch', [PosRateSyncController::class, 'dispatch'])->name('sync.dispatch');
+    Route::post('/sync', PosRateSyncController::class)->name('sync');
 });

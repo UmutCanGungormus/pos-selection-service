@@ -1,9 +1,23 @@
 <?php
 
 use App\Contracts\PosRateProviderInterface;
+use App\Jobs\SyncPosRatesJob;
 use App\Models\PosRate;
+use Illuminate\Support\Facades\Queue;
 
-it('syncs POS rates from external API via endpoint', function () {
+it('dispatches sync job via endpoint', function () {
+    Queue::fake();
+
+    $response = $this->postJson('/api/pos/sync');
+
+    $response->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('message', __('pos.sync_dispatched'));
+
+    Queue::assertPushed(SyncPosRatesJob::class);
+});
+
+it('syncs POS rates when job is processed', function () {
     $mockProvider = Mockery::mock(PosRateProviderInterface::class);
     $mockProvider->shouldReceive('fetchRates')->once()->andReturn(collect([
         [
@@ -20,11 +34,7 @@ it('syncs POS rates from external API via endpoint', function () {
 
     $this->app->instance(PosRateProviderInterface::class, $mockProvider);
 
-    $response = $this->postJson('/api/pos/sync');
-
-    $response->assertOk()
-        ->assertJsonPath('success', true)
-        ->assertJsonPath('data.synced_count', 1);
+    (new SyncPosRatesJob)->handle($this->app->make(\App\Services\PosRateSyncService::class));
 
     $this->assertDatabaseHas('pos_rates', [
         'pos_name' => 'TestBank',
@@ -32,14 +42,6 @@ it('syncs POS rates from external API via endpoint', function () {
         'card_brand' => 'testcard',
         'commission_rate' => 0.025,
     ]);
-});
-
-it('dispatches sync job via endpoint', function () {
-    $response = $this->postJson('/api/pos/sync/dispatch');
-
-    $response->assertOk()
-        ->assertJsonPath('success', true)
-        ->assertJsonPath('message', __('pos.sync_dispatched'));
 });
 
 it('updates existing rates instead of duplicating', function () {
@@ -70,7 +72,7 @@ it('updates existing rates instead of duplicating', function () {
 
     $this->app->instance(PosRateProviderInterface::class, $mockProvider);
 
-    $this->postJson('/api/pos/sync');
+    (new SyncPosRatesJob)->handle($this->app->make(\App\Services\PosRateSyncService::class));
 
     expect(PosRate::count())->toBe(1)
         ->and((float) PosRate::first()->commission_rate)->toBe(0.03);

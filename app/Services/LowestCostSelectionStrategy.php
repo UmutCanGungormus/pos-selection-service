@@ -28,12 +28,6 @@ class LowestCostSelectionStrategy implements PosSelectionStrategyInterface
             throw new PosRateNotFoundException($this->buildFilters($criteria));
         }
 
-        // In-memory sort is intentional here. The repository's findLowestCostRate()
-        // sorts only by commission_rate at DB level, which does not account for min_fee.
-        // The actual cost is max(amount * commission_rate, min_fee), which depends on
-        // the request amount -- a runtime value that cannot be evaluated in SQL without
-        // a raw expression. For typical POS rate cardinality (<100 rows per filter
-        // combination) the in-memory sort is negligible and guarantees correctness.
         $bestRate = $posRates
             ->sortBy([
                 fn (PosRate $a, PosRate $b) => $a->calculateCost($criteria->amount) <=> $b->calculateCost($criteria->amount),
@@ -41,10 +35,13 @@ class LowestCostSelectionStrategy implements PosSelectionStrategyInterface
             ])
             ->first();
 
+        $price = $bestRate->calculateCost($criteria->amount);
+
         return new PosSelectionOutcome(
             filters: $this->buildFilters($criteria),
             bestRate: $bestRate,
-            cost: $bestRate->calculateCost($criteria->amount),
+            price: $price,
+            payableTotal: $criteria->amount + $price,
         );
     }
 

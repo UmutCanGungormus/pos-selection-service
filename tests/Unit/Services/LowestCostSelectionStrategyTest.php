@@ -52,7 +52,7 @@ beforeEach(function () {
     ]);
 });
 
-it('selects the POS with the lowest commission rate', function () {
+it('selects the POS with the lowest cost', function () {
     $strategy = new LowestCostSelectionStrategy(new PosRateRepository(new PosRate));
 
     $request = new PosSelectionCriteria(
@@ -65,25 +65,13 @@ it('selects the POS with the lowest commission rate', function () {
     $result = $strategy->select($request);
 
     expect($result->bestRate->pos_name)->toBe('Garanti')
-        ->and((float) $result->bestRate->commission_rate)->toBe(0.027)
-        ->and($result->cost)->toBe(27.0);
+        ->and($result->price)->toBe(27.0)
+        ->and($result->payableTotal)->toBe(1027.0);
 });
 
 it('selects higher priority POS when costs are equal', function () {
     $strategy = new LowestCostSelectionStrategy(new PosRateRepository(new PosRate));
 
-    // Akbank (0.028, priority 5) vs YapiKredi (0.028, priority 7)
-    $request = new PosSelectionCriteria(
-        amount: 1000,
-        installment: 6,
-        currency: Currency::TRY,
-        cardType: CardType::Credit,
-        cardBrand: null,
-    );
-
-    $result = $strategy->select($request);
-
-    // Garanti wins overall (0.027), but if we exclude Garanti by filtering brand:
     $requestWorld = new PosSelectionCriteria(
         amount: 1000,
         installment: 6,
@@ -131,7 +119,7 @@ it('builds correct filters in result', function () {
     $strategy = new LowestCostSelectionStrategy(new PosRateRepository(new PosRate));
 
     $request = new PosSelectionCriteria(
-        amount: 500,
+        amount: 1000,
         installment: 6,
         currency: Currency::TRY,
         cardType: CardType::Credit,
